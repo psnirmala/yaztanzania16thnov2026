@@ -1,0 +1,379 @@
+https://cloud.cdp.rpsconsulting.in/
+
+27SON1502_U## ---- username
+Nov@2026
+
+01-------Jamal
+02-------Nora
+03-------Richard
+04-------Aman
+05-------Aminiel
+06-------David
+07-------Ashraf
+08-------Omari
+09-------Marco
+10-------Novat
+11-------TTuwr
+
+ubuntu linux
+
+U : RPS
+P : P@%%w0rd
+
+From the terminal window, run the following command to activate pyspark-env
+conda activate pyspark-env
+
+run the following command to start pyspark shell.
+
+pyspark
+
+create the file /home/rps/training/users.json and add the following content to it.
+
+{"name":"Alice", "pcode":"94304"}
+{"name":"Brayden", "age":30, "pcode":"94304"}
+{"name":"Carla", "age":19, "pcode":"10036"}
+{"name":"Diana", "age":46}
+{"name":"Étienne", "pcode":"94104"}
+
+>>> user_df=spark.read.json("/home/rps/training/users.json")
+>>> user_df.show()  
+
+>>> user_df.printSchema()
+
+>>> user_df_1=user_df.select("name","age","pcode")
+>>> user_df_1.show()
+
+create the file /home/rps/training/employee.csv and add the following content to it.
+
+id,name,designation,salary
+1224,Arvind,Developer,40000
+2251,David,Architect,80000
+3245,Suresh,Accountant,35000
+3434,Amar,IT-Admin,32000
+
+
+>>> emp_df=spark.read.option("header",True).csv("/home/rps/training/employee.csv")
+>>> emp_df.show()
+
+
+
+
+spark_test_1.py
+
+from pyspark.sql import SparkSession
+spark=SparkSession.builder.appName("first-app").master("local[*]").getOrCreate()
+emp_df=spark.read.option("header",True).csv("/home/rps/training/employee.csv")
+emp_df.show()
+
+>>> emp_df.printSchema()
+
+>> emp_df=spark.read.option("header",True).option("inferSchema",True).csv("/home/rps/training/employee.csv")
+>>> emp_df.show()
+>>> emp_df.printSchema()
+
+>>> emp_df.count()
+
+>>> emp_df.first()
+
+
+>>> emp_df.take(2)
+>>> emp_df.write.json("/home/rps/json-out-1")
+
+/home/rps/csvdata/1.csv
+
+id,name
+1212,rajiv
+2322,arvind
+
+/home/rps/csvdata/2.csv
+
+id,name
+1213,priya
+2329,amar
+3244,stephen
+
+>>> cust_df=spark.read.option("header",True).csv("/home/rps/csvdata")
+>>> cust_df.show()
+
+>>> emp_df_2=emp_df.where("salary>35000")
+>>> emp_df_2.show()
+
+>>> emp_df.where("salary>35000").select("id","salary").show()
+
+>>> emp_df=spark.read.option("header",True).csv("/home/rps/training/employee.csv")
+>>> emp_df_1=emp_df.where("salary>35000")
+>>> emp_df_2=emp_df_1.select("id","name")
+>>> emp_df_2.show()
+
+/home/rps/training/employee.csv
+
+id,name,designation,salary
+1224,Arvind,Developer,40000
+2251,David,Architect,80000
+3245,Suresh,Accountant,35000
+3434,Amar,IT-Admin,32000
+2322,Jahir,Developer,42000
+2355,Stephen,Accountant,36000
+1999,Raghav,Developer,41000
+
+
+>>> emp_df=spark.read.option("header",True).csv("/home/rps/training/employee.csv")
+>>> emp_df.show()
+
+
+>>> grouped_df=emp_df.groupBy("designation").count()
+>>> grouped_df.show()
+
+>>> grouped_df.write.save("/home/rps/data-out-1")
+
+>>> parq_df=spark.read.parquet("/home/rps/data-out-1")                          
+>>> parq_df.show()
+>>> parq_df=spark.read.load("/home/rps/data-out-1")                          
+>>> parq_df.show()
+
+
+/home/rps/training/employee.csv
+
+id,name,designation,salary
+1224,Arvind,Developer,40000
+2251,David,Architect,80000
+3245,Suresh,Accountant,35000
+3434,Amar,IT-Admin,32000
+2322,Jahir,Developer,42000
+2355,Stephen,Accountant,36000
+1999,Raghav,Developer,41000
+
+Write all developers in json format to the directory /home/rps/data-out/developers with only id,name and salary fields.
+
+Write all acccountants in csv format to the directory /home/rps/data-out/accountants with only id,name and salary fields and ensure that headers are written to the file.
+
+
+Write all architects in parquet format to the directory /home/rps/data-out/architects with only id,name and salary fields
+
+
+
+df.where("designation='Developer'")
+
+emp_df=spark.read.option("header",True).csv("/home/rps/training/employee.csv");
+emp_df.where("designation='Developer'").select("id","name","salary").write.json("/home/rps/data-out/developers")
+
+
+emp_df.where("designation='Accountant'").select("id","name","salary").write.option("header",True).csv("/home/rps/data-out/accountants")
+
+emp_df.where("designation='Architect'").select("id","name","salary").write.parquet("/home/rps/data-out/architects")
+
+>>>exit()
+
+pyspark --packages org.apache.spark:spark-avro_2.13:4.0.1
+
+>>> emp_df=spark.read.option("header",True).csv("/home/rps/training/employee.csv")
+>>> emp_df.show()
+
+
+>>> emp_df.write.format("avro").save("/home/rps/data-out-1/avro-data")
+
+
+
+https://repo1.maven.org/maven2/org/apache/avro/avro-tools/1.12.2/avro-tools-1.12.2.jar
+
+java -jar ~/Downloads/avro-tools-1.12.2.jar tojson /home/rps/data-out-1/avro-data/yourfile.snappy.avro 
+
+
+
+/home/rps/training/people.csv
+
+pcode,lastName,firstName,age
+02134,Hopper,Grace,52
+,Turing,Alan,32
+94020,Lovelace,Ada,28
+87501,Babbage,Charles,49
+02134,Wirth,Niklaus,48
+
+/home/rps/training/postalcodes.csv
+
+pcode,city,state
+02134,Boston,MA
+94020,Palo Alto,CA
+87501,Santa Fe,NM
+60645,Chicago,IL
+
+
+>>> people_df=spark.read.option("header",True).csv("/home/rps/training/people.csv")
+>>> postalcode_df=spark.read.option("header",True).csv("/home/rps/training/postalcodes.csv")
+>>> people_df.show()
+
+
+>>> postalcode_df.show()
+
+
+>>> join_df=people_df.join(postalcode_df,"pcode")
+>>> join_df.show()
+
+>>> join_df=people_df.join(postalcode_df,people_df.pcode==postalcode_df.pcode,"inner")
+>>> join_df.show()
+
+>> join_df=people_df.join(postalcode_df,people_df.pcode==postalcode_df.pcode,"left_outer")
+>>> join_df.show()
+
+>>> join_df=people_df.join(postalcode_df,people_df.pcode==postalcode_df.pcode,"right_outer")
+>>> join_df.show()
+>>> join_df=people_df.join(postalcode_df,people_df.pcode==postalcode_df.pcode,"full_outer")
+>>> join_df.show()
+
+>>> join_df=people_df.join(postalcode_df,people_df.pcode==postalcode_df.pcode,"full_outer").drop(postalcode_df.pcode)
+>>> join_df.show()
+
+from pyspark.sql.types import *
+from pyspark.sql import SparkSession
+
+spark=SparkSession.builder.appName("user-defined-schema-app").master("local[*]").getOrCreate()
+fields=[StructField("empid",IntegerType()),StructField("name",StringType()),
+        StructField("designation",StringType()),StructField("salary",IntegerType())]
+emp_schema=StructType(fields)
+emp_df=spark.read.option("header",True).schema(emp_schema).csv("/home/rps/training/employee.csv")
+emp_df.show()
+
+
+
+
+/home/rps/structureddataset/emp.csv
+
+empid,name,deptid,location
+101,Arun,501,Dar-Es-Salaam
+102,Surya,502,Hyderabad
+103,Akash,501,Dar-Es-Salaam
+104,Ramesh,503,Mumbai
+
+/home/rps/structureddataset/dept.json
+
+{"deptid":501,"department":"IT","location":"Dar-Es-Salaam"}
+{"deptid":502,"department":"HR","location":"Hyderabad"}
+{"deptid":501,"department":"IT","location":"Chennai"}
+{"deptid":503,"department":"Sales","location":"Mumbai"}
+
+Create data frames from emp.csv and dept.json.
+Perform a join between them based on both deptid and location.
+
+empDF=spark.read.option("header",True).csv("/home/rps/structureddataset/emp.csv");
+empDF.show()
+
+deptDF=spark.read.json("/home/rps/structureddataset/dept.json")
+deptDF.show()
+resultDF=empDF.join(deptDF,(empDF.deptid==deptDF.deptid) & (empDF.location==deptDF.location),"inner")
+resultDF.show()
+resultDF=empDF.join(deptDF,(empDF.deptid==deptDF.deptid) ,"inner")
+resultDF.show()
+
+>>> people_df.createOrReplaceTempView("people")
+>>> spark.sql("select * from people").show()
+
+
+>>> spark.sql("select pcode,firstName from people").show()
+
+>>> postalcode_df.createOrReplaceTempView("postalcode")
+>>> join_df=spark.sql("select a.pcode,a.lastName,a.firstName,a.age,b.city,b.state from people a,postalcode b where a.pcode=b.pcode")
+>>> join_df.show()
+
+sudo apt install mysql-server -y
+
+sudo mysql
+
+mysql> create database trainingdb;
+Query OK, 1 row affected (0.00 sec)
+
+mysql> use trainingdb;
+ysql> create table customer(cust_id integer,name varchar(20),email varchar(20));
+Query OK, 0 rows affected (0.02 sec)
+
+mysql> insert into customer values(1001,"Ramesh","ramesh@gmail.com");
+Query OK, 1 row affected (0.00 sec)
+
+mysql> insert into customer values(1002,"Amar","amar@gmail.com");
+Query OK, 1 row affected (0.00 sec)
+
+mysql> insert into customer values(1003,"David","david@gmail.com");
+Query OK, 1 row affected (0.00 sec)
+
+mysql> select * from customer;
+
+mysql> create user 'sparkappuser'@'localhost' identified by 'password123';
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> grant all on trainingdb.* to 'sparkappuser'@'localhost';
+Query OK, 0 rows affected (0.00 sec)
+
+
+>>>exit()
+
+pyspark --packages com.mysql:mysql-connector-j:8.4.0
+
+>>> jdbc_df=spark.read.format("jdbc").option("url","jdbc:mysql://localhost:3306/trainingdb").option("dbtable","customer").option("user","sparkappuser").option("password","password123").option("driver","com.mysql.cj.jdbc.Driver").load()
+>>> jdbc_df.show()
+
+>>> jdbc_df.where("cust_id>1001").write.format("jdbc").option("url","jdbc:mysql://localhost:3306/trainingdb").option("dbtable","customer_1").option("user","sparkappuser").option("password","password123").option("driver","com.mysql.cj.jdbc.Driver").save()
+
+mysql> show tables;
+
+
+mysql> select * from customer_1;
+
+
+
+from pyspark.sql import SparkSession
+spark=SparkSession.builder.appName("jdbc-app"). \
+    master("local[*]"). \
+    config(
+        "spark.jars.packages",
+        "com.mysql:mysql-connector-j:8.4.0"
+    ). \
+    getOrCreate()
+jdbc_df=spark.read.format("jdbc").option("url","jdbc:mysql://localhost:3306/trainingdb").option("dbtable","customer").option("user","sparkappuser").option("password","password123").option("driver","com.mysql.cj.jdbc.Driver").load()
+jdbc_df.show()
+
+
+minio_write.py
+
+from pyspark.sql import SparkSession
+spark=(SparkSession.builder.appName("minio-write-app").master("local[*]") 
+ .config(
+        "spark.jars.packages",
+        "org.apache.hadoop:hadoop-aws:3.4.1"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.endpoint",
+        "http://localhost:9000"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.access.key",
+        "minioadmin"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.secret.key",
+        "MinioAdmin123456"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.path.style.access",
+        "true"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.connection.ssl.enabled",
+        "false"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.impl",
+        "org.apache.hadoop.fs.s3a.S3AFileSystem"
+    )
+    .getOrCreate())
+
+emp_df=spark.read.option("header",True).csv("/home/rps/training/employee.csv")
+emp_df.show()
+print("writing to minio")
+# MinIO destination
+output_path = "s3a://trainingbucket/employees/"
+emp_df.write.format("json").save(output_path)
+
+
+
+
+
+
