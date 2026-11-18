@@ -1,0 +1,482 @@
+cat /etc/systemd/system/minio.service 
+
+configuration can be viewed through
+
+cat /etc/default/minio 
+
+
+sudo systemctl status minio
+
+
+
+curl --progress-bar -L https://dl.min.io/aistor/mc/release/linux-amd64/mc \--create-dirs \-o $HOME/minioclient/mc
+
+
+ls -ltr ~/minioclient/
+$ chmod +x ~/minioclient/mc
+$ sudo mv ~/minioclient/mc /usr/local/bin/mc
+$ mc --version
+
+$ mc alias set local http://localhost:9000 minioadmin MinioAdmin123456
+
+mc admin info local
+
+$ mc mb local/bucket1
+
+$ mc mb local/bucket2
+
+$ mc ls local
+
+Uploads the localfile to minio bucket
+$ mc cp employee.csv local/bucket1
+
+$ mc cat local/bucket1/employee.csv
+
+Downloads a file from miniobucket to the local directory
+$ mc cp local/bucket1/employee.csv emptest.csv
+
+$ cat emptest.csv 
+
+$ mc mb local/datalakebucket
+
+$ mc ls local
+
+/home/rps/training/policies/data-engineer-policy.json
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::datalakebucket"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::datalakebucket/*"
+      ]
+    }
+  ]
+}
+
+/home/rps/training/policies/data-analyst-policy.json
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::datalakebucket"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::datalakebucket/*"
+      ]
+    }
+  ]
+}
+
+create the policies
+
+$ mc admin policy create local data-engineer ~/training/policies/data-engineer-policy.json
+
+$ mc admin policy create local data-analyst ~/training/policies/data-analyst-policy.json
+
+create a user called minioadmin1 whose password is admin123
+$ mc admin user add local minioadmin1 'admin123'
+
+assign consoleadmin policy to minioadmin1
+
+create the users for dataengineer1 and dataanalyst1
+
+$ mc admin user add local dataengineer1 'engineer123'
+
+$ mc admin user add local dataanalyst1 'analyst123'
+
+$ mc admin group add local dataengineers dataengineer1
+
+$ mc admin group add local dataanalysts dataanalyst1
+
+Assign policies to the groups
+
+$ mc admin policy attach local data-engineer --group=dataengineers
+
+$ mc admin policy attach local data-analyst --group=dataanalysts
+
+connect as user dataengineer1
+$ mc alias set engineer http://localhost:9000 dataengineer1 'engineer123'
+
+check whether there is write permission
+$ mc cp employee.csv engineer/datalakebucket
+
+check whether there is read permission
+$mc cat engineer/datalakebucket/employee.csv
+
+$mc alias set analyst http://localhost:9000 dataanalyst1 'analyst123'
+
+$ mc cat analyst/datalakebucket/employee.csv
+
+the following command will fail due to insufficient permission
+$ mc cp people.csv analyst/datalakebucket/
+
+$ mc admin policy ls local
+$ mc admin policy info local data-engineer
+
+$ mc admin policy info local data-analyst
+
+exercise:
+    
+    create a bucket called sparkdatabucket through mc.
+    create a policy file named archiect-policy.json which has get,put and delete permission on sparkdatabucket.
+    create a policy file named data-user-policy.json which has only get permission on sparkdatabucket.
+    
+ create a policy called archichet-policy and attach it to architect-policy.json.
+ create a policy called data-user-policy and attach it to data-user-policy.json.   
+ 
+ create users architect1 and architect2 and add them to a group called architect-group.
+ create users user1 and user1 and add them to a group called user-group.
+ attach architect-policy to architect-group.
+ attach data-user-policy to user-group.
+ 
+ connnect to the minio server as architect1 and try uploading a file to sparkdatabucket.
+ Also read the file in the bucket.
+ Both should succeed because architect-policy has both read and write permission on sparkdatabucket.
+ 
+ 
+connect to the minio server as user2 and try uploading a file to sparkdatabucket.
+ Also read the file in the bucket.
+ uploading will fail as data-user-policy does not have write permission on sparkdatabucket.
+ But this user will be able to read from the bucket.
+
+view the policies available in the server
+view the permissions of architect-policy and data-user-policy.
+
+solution:
+
+connect as admin user with alias name local
+ $ mc alias set local http://localhost:9000 minioadmin MinioAdmin123456
+ 
+ create the sparkdatabucket
+ $mc mb local/sparkdatabucket
+ 
+ create a config file architect-policy
+ 
+ /home/rps/training/policies/architect-policy.json
+  {
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::sparkdatabucket/*"
+      ]
+    }
+  ]
+}
+
+create a policy file for data-users.
+
+ /home/rps/training/policies/data-user-policy.json
+
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::sparkdatabucket/*"
+      ]
+    }
+  ]
+}
+
+
+create user architect1
+
+$ mc admin user add local architech1 'architech123'
+
+create user architect2
+
+$ mc admin user add local architech2 'architech456'
+
+Add architect1 and architect2 to architect-group
+
+$ mc admin group add local architech-group architech1 architech2
+
+create user1
+
+$ mc admin user add local user1 'password123'
+
+create user2
+
+$ mc admin user add local user2 'password456'
+
+Add user1 and user2 to user-group
+
+$ mc admin group add local user-group user1 user2
+
+attach architect-policy.json file to architect-policy
+
+$ mc admin policy create local architech-policy  /home/rps/training/policies/architech-policy.json
+assign architect-policy to architect group
+
+$ mc admin policy attach local architech-policy --group=architech-group
+
+attach data-user-policy.json file to user-policy
+
+$ mc admin policy create local user-policy  /home/rps/training/policies/data-user-policy.json
+
+assign user-policy to user-group
+$ mc admin policy attach local user-policy --group=user-group
+
+$ mc alias set architect http://localhost:9000 architech1 architech123
+
+$ mc cp employee.csv user/sparkdatabucket
+...MinioTraining/employee.csv:            ███████████████████████████████████████████████████████████████████████████████████████████████ 100.0% 220 B     7.1 KiB/s 
+
+
+
+connecting as user2 
+$ mc alias set user  http://localhost:9000 user2 password456
+
+
+$ mc cp employee.csv user/sparkdatabucket
+Unable to copy `/home/rps/learning_u11/MinioTraining/employee.csv`. Insufficient permissions to access this path `http://localhost:9000/sparkdatabucket/employee.csv`
+...MinioTraining/employee.csv:            ███████████████████████████████████
+
+
+
+$ mc admin policy ls local
+
+$ mc admin policy info local architect-policy
+
+/home/rps/training/structureddata/1.csv
+
+23232,Arun,Developer
+23223,David,Accountant
+43444,Arjun,Architect
+
+/home/rps/training/structureddata/2.csv
+
+23239,Amar,Developer
+23250,Jahir,Accountant
+32225,Priya,Developer
+
+
+/home/rps/training/structureddata/3.csv
+
+23230,Rahav,Developer
+23252,Amar,Accountant
+32229,Sugumar,Developer 
+32255,Arjun,Architect
+
+
+
+streaming_app_1.py
+
+from pyspark.sql.types import *
+from pyspark.sql import SparkSession
+import time
+spark=SparkSession.builder.appName("user-defined-schema-app").master("local[*]").getOrCreate()
+fields=[StructField("id",IntegerType()),StructField("name",StringType()),
+        StructField("designation",StringType())]
+emp_schema=StructType(fields)
+emp_df=spark.readStream.format("csv").schema(emp_schema).\
+    load("/home/rps/training/structureddata/csvstreamingdata/")
+streaming_query=emp_df.writeStream.format("console").\
+    option("checkpointLocation","/home/rps/training/checkpoint-1"). \
+    trigger(processingTime="20 seconds").start()
+    
+    
+    
+print("streaming started")
+time.sleep(5*60)
+streaming_query.stop()
+print("streaming stopped")
+
+streaming_etl_app.py
+
+from pyspark.sql.types import *
+from pyspark.sql import SparkSession
+import time
+spark=SparkSession.builder.appName("user-defined-schema-app").master("local[*]").getOrCreate()
+fields=[StructField("id",IntegerType()),StructField("name",StringType()),
+        StructField("designation",StringType())]
+emp_schema=StructType(fields)
+emp_df=spark.readStream.format("csv").schema(emp_schema).\
+    load("/home/rps/training/structureddata/csvstreamingdata/")
+dev_df=emp_df.where("designation='Developer'")
+acct_df=emp_df.where("designation='Accountant'")
+architect_df=emp_df.where("designation='Architect'")
+dev_streaming_query=dev_df.writeStream.format("json").\
+    option("checkpointLocation","/home/rps/training/checkpoint-dev"). \
+    trigger(processingTime="20 seconds").start("/home/rps/streaming-out/dev")
+acct_streaming_query=acct_df.writeStream.format("json").\
+    option("checkpointLocation","/home/rps/training/checkpoint-acct"). \
+    trigger(processingTime="20 seconds").start("/home/rps/streaming-out/acct")
+
+architect_streaming_query=architect_df.writeStream.format("json").\
+    option("checkpointLocation","/home/rps/training/checkpoint-architect"). \
+    trigger(processingTime="20 seconds").start("/home/rps/streaming-out/architect")
+
+print("streaming started")
+time.sleep(5*60)
+dev_streaming_query.stop()
+acct_streaming_query.stop()
+architect_streaming_query.stop()
+print("streaming stopped")
+
+
+https://archive.apache.org/dist/kafka/3.4.1/kafka_2.12-3.4.1.tgz
+P : P@%%w0rd
+cd ~/kafka_2.12-3.4.1/
+
+~/kafka_2.12-3.4.1$ bin/zookeeper-server-start.sh config/zookeeper.properties
+
+~/kafka_2.12-3.4.1$ bin/kafka-server-start.sh config/server.properties
+
+~/kafka_2.12-3.4.1$ bin/kafka-topics.sh --create --topic first-topic --partitions 4 --bootstrap-server localhost:9092
+
+~/kafka_2.12-3.4.1$ bin/kafka-topics.sh --list --bootstrap-server localhost:9092
+
+
+~/kafka_2.12-3.4.1$ bin/kafka-console-producer.sh --topic first-topic --bootstrap-server localhost:9092
+
+bin/kafka-console-consumer.sh --topic first-topic --bootstrap-server localhost:9092
+
+
+rdbms------->kafka topic pipeline steps
+
+steps:
+1. create the rows in MySQL.
+
+mysql> create database companydb;
+Query OK, 1 row affected (0.00 sec)
+
+mysql> use companydb;
+Database changed
+mysql> create table employee(emp_id integer primary key auto_increment,emp_name varchar(20),designation varchar(20));
+
+
+mysql> insert into employee(emp_name,designation) values("Deva","Accountant");
+Query OK, 1 row affected (0.00 sec)
+
+mysql> insert into employee(emp_name,designation) values("Priya","Developer");
+Query OK, 1 row affected (0.00 sec)
+
+mysql> insert into employee(emp_name,designation) values("Ramesh","Architect");
+Query OK, 1 row affected (0.02 sec)
+
+mysql> select * from employee;
+
+mysql> create user 'kafkaappuser'@'localhost' identified by 'password123';
+Query OK, 0 rows affected (0.01 sec)
+
+mysql> grant all on companydb.* to 'kafkaappuser'@'localhost';
+
+JDBC-----Java Database Connectivity
+To interact with any database, we need the jdbc driver of the respective database.
+
+2. download the MySQL jdbc driver from https://repo1.maven.org/maven2/com/mysql/mysql-connector-j/8.4.0/mysql-connector-j-8.4.0.jar  and copy it to $KAFKA_HOME\libs directory
+
+3. Download the kafka connector for jdbc from https://www.confluent.io/hub/confluentinc/kafka-connect-jdbc,
+extract it and then copy lib\kafka-connect-jdbc-version.jar to $KAFKA_HOME\libs directory.
+
+4. clear the c:\tmp directory.
+
+
+
+6.restart the zookeeper and kafka servers.
+
+c
+
+bin/kafka-server-start.sh config/server.properties
+
+7. start the connect process.
+
+bin/connect-standalone.sh config/connect-standalone.properties
+
+8. Verify whether the connector plugins are available by sending a get request to 
+http://localhost:8083/connector-plugins
+
+9. Download postman from the link https://www.postman.com/downloads/ and extract it
+
+10. start postman and start the  MySQL kafka  connector using the following prcess.
+
+POST http://localhost:8083/connectors
+      header 
+       Content-Type: application/json
+       
+       body
+
+{
+        "name": "jdbc_source_mysql_connector",
+        "config": {
+                "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+                "connection.url": "jdbc:mysql://localhost:3306/companydb",
+                "connection.user": "kafkaappuser",
+                "connection.password": "password123",
+                "topic.prefix": "mysql-src-topic-",
+                "mode":"incrementing",
+        "incrementing.column.name": "emp_id",
+                "table.whitelist" : "employee"
+                }
+}
+
+open a new terminal tab, navigate to $KAFKA_HOME directory and run the following command
+
+bin/kafka-console-consumer.sh --topic mysql-src-topic-employee --bootstrap-server localhost:9092 --from-beginning
+
+To avoid publishing schema to the topic, configure the following properties in $KAFKA_HOME/config/connect-standalone.properties
+
+key.converter.schemas.enable=false
+value.converter.schemas.enable=false
+
+changee the connector configuration as shown below,
+
+{
+        "name": "jdbc_source_mysql_connector-1",
+        "config": {
+                "connector.class": "io.confluent.connect.jdbc.JdbcSourceConnector",
+                "connection.url": "jdbc:mysql://localhost:3306/companydb",
+                "connection.user": "kafkaappuser",
+                "connection.password": "password123",
+                "topic.prefix": "mysql-topic-",
+                "mode":"incrementing",
+        "incrementing.column.name": "emp_id",
+                "table.whitelist" : "employee"
+                }
+}
+
+consume the messages using the following command,
+
+bin/kafka-console-consumer.sh --topic mysql-topic-employee --bootstrap-server localhost:9092 --from-beginning
+
+--packages org.apache.hadoop:hadoop-aws:3.4.1,org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.1 
