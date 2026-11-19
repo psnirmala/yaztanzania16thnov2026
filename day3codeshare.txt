@@ -1,0 +1,575 @@
+$ bin/kafka-console-producer.sh --topic test-topic --bootstrap-server localhost:9092
+$ bin/kaftopics.sh --list  --bootstrap-server localhost:9092
+$ bin/kafka-console-consumer.sh --topic test-topic --bootstrap-server localhost:9092 --from-beginning
+
+
+open a new terminal window and run the following commands
+
+$ conda activate pyspark-env
+$ python --version
+$ pip install kafka-python
+
+
+
+kafka_spark_etl_app.py
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, from_json
+import time
+
+# ---------------------------------------------
+# 1. Create SparkSession
+# ---------------------------------------------
+
+spark = (
+    SparkSession.builder
+    .appName("KafkaJSONToMinIO")
+
+    # MinIO S3A configuration
+    .config(
+        "spark.hadoop.fs.s3a.impl",
+        "org.apache.hadoop.fs.s3a.S3AFileSystem"
+    ) .config(
+        "spark.jars.packages",
+        "org.apache.hadoop:hadoop-aws:3.4.1,org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.1"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.endpoint",
+        "http://localhost:9000"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.access.key",
+    "minioadmin1"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.secret.key",
+    "admin123"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.path.style.access",
+        "true"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.connection.ssl.enabled",
+        "false"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.aws.credentials.provider",
+        "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider"
+    )
+    .config("spark.sql.shuffle.partitions", "2")
+    .getOrCreate()
+)
+spark.sparkContext.setLogLevel("WARN")
+
+print("Spark Version:", spark.version)
+
+# ---------------------------------------------
+# 2. Define JSON schema
+# ---------------------------------------------
+
+
+json_schema="emp_id INT,emp_name STRING,designation STRING"
+
+# ---------------------------------------------
+# 3. Read messages from Kafka
+# ---------------------------------------------
+
+kafka_df = (
+    spark.readStream
+    .format("kafka")
+    .option("kafka.bootstrap.servers", "localhost:9092")
+    .option("subscribe", "mysql-topic-employee")
+    .option("startingOffsets", "earliest")
+    .load()
+)
+
+# ---------------------------------------------
+# 4. Convert Kafka binary value to string
+# ---------------------------------------------
+
+json_df = kafka_df.select(
+    col("value").cast("string").alias("json_data")
+)
+
+# ---------------------------------------------
+# 5. Parse JSON messages
+# ---------------------------------------------
+
+parsed_df = json_df.select(
+    from_json(
+        col("json_data"),
+        json_schema
+    ).alias("data")
+)
+
+result_df = parsed_df.select("data.*")
+
+# ---------------------------------------------
+# 6. Filter invalid records
+# ---------------------------------------------
+
+valid_df = result_df.filter(
+    col("emp_id").isNotNull() &
+    col("emp_name").isNotNull() &
+    col("designation").isNotNull()
+)
+
+# ---------------------------------------------
+# 7. Write JSON files to MinIO
+# ---------------------------------------------
+
+output_path = "s3a://datalakebucket/kafka-spark-etl-data/"
+
+checkpoint_path = (
+    "s3a://datalakebucket/checkpoints/kafka-spark-minio/"
+)
+
+query = (
+    valid_df.writeStream
+    .format("csv")
+    .outputMode("append")
+    .option("path", output_path)
+    .option("checkpointLocation", checkpoint_path)
+    .option("header",True)
+    .trigger(processingTime="5 seconds")
+    .start()
+)
+
+print("Kafka to MinIO streaming application started")
+time.sleep(10*60)
+query.stop()
+print("Kafka to MinIO streaming application stopped")
+
+
+mc ls local/datalakebucket/kafka-spark-etl-data
+
+
+kafka_spark_etl_transformation_app.py
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, from_json
+import time
+
+# ---------------------------------------------
+# 1. Create SparkSession
+# ---------------------------------------------
+
+spark = (
+    SparkSession.builder
+    .appName("KafkaJSONToMinIO_Transformation_App")
+
+    # MinIO S3A configuration
+    .config(
+        "spark.hadoop.fs.s3a.impl",
+        "org.apache.hadoop.fs.s3a.S3AFileSystem"
+    ) .config(
+        "spark.jars.packages",
+        "org.apache.hadoop:hadoop-aws:3.4.1,org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.1"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.endpoint",
+        "http://localhost:9000"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.access.key",
+    "minioadmin1"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.secret.key",
+    "admin123"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.path.style.access",
+        "true"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.connection.ssl.enabled",
+        "false"
+    )
+    .config(
+        "spark.hadoop.fs.s3a.aws.credentials.provider",
+        "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider"
+    )
+    .config("spark.sql.shuffle.partitions", "2")
+    .getOrCreate()
+)
+spark.sparkContext.setLogLevel("WARN")
+
+print("Spark Version:", spark.version)
+
+# ---------------------------------------------
+# 2. Define JSON schema
+# ---------------------------------------------
+
+
+json_schema="emp_id INT,emp_name STRING,designation STRING"
+
+# ---------------------------------------------
+# 3. Read messages from Kafka
+# ---------------------------------------------
+
+kafka_df = (
+    spark.readStream
+    .format("kafka")
+    .option("kafka.bootstrap.servers", "localhost:9092")
+    .option("subscribe", "mysql-topic-employee")
+    .option("startingOffsets", "earliest")
+    .load()
+)
+
+# ---------------------------------------------
+# 4. Convert Kafka binary value to string
+# ---------------------------------------------
+
+json_df = kafka_df.select(
+    col("value").cast("string").alias("json_data")
+)
+
+# ---------------------------------------------
+# 5. Parse JSON messages
+# ---------------------------------------------
+
+parsed_df = json_df.select(
+    from_json(
+        col("json_data"),
+        json_schema
+    ).alias("data")
+)
+
+result_df = parsed_df.select("data.*")
+
+# ---------------------------------------------
+# 6. Filter invalid records
+# ---------------------------------------------
+
+valid_df = result_df.filter(
+    col("emp_id").isNotNull() &
+    col("emp_name").isNotNull() &
+    col("designation").isNotNull()
+)
+
+# ---------------------------------------------
+# 7. Write JSON files to MinIO
+# ---------------------------------------------
+
+dev_output_path = "s3a://datalakebucket/developer-data/"
+acct_output_path = "s3a://datalakebucket/acct-data/"
+architect_output_path = "s3a://datalakebucket/architect-data/"
+
+dev_checkpoint_path = (
+    "s3a://datalakebucket/checkpoints/dev/"
+)
+acct_checkpoint_path = (
+    "s3a://datalakebucket/checkpoints/acct/"
+)
+architect_checkpoint_path = (
+    "s3a://datalakebucket/checkpoints/architect/"
+)
+
+
+dev_df=valid_df.where("designation='Developer'").select("emp_id","emp_name")
+acct_df=valid_df.where("designation='Accountant'").select("emp_id","emp_name")
+architect_df=valid_df.where("designation='Architect'").select("emp_id","emp_name")
+
+
+dev_query = (
+    dev_df.writeStream
+    .format("parquet")
+    .outputMode("append")
+    .option("path", dev_output_path)
+    .option("checkpointLocation", dev_checkpoint_path)
+    .option("header",True)
+    .trigger(processingTime="5 seconds")
+    .start()
+)
+acct_query = (
+    acct_df.writeStream
+    .format("csv")
+    .outputMode("append")
+    .option("path", acct_output_path)
+    .option("checkpointLocation", acct_checkpoint_path)
+    .option("header",True)
+    .trigger(processingTime="5 seconds")
+    .start()
+)
+architect_query = (
+    architect_df.writeStream
+    .format("json")
+    .outputMode("append")
+    .option("path", architect_output_path)
+    .option("checkpointLocation", architect_checkpoint_path)
+    .option("header",True)
+    .trigger(processingTime="5 seconds")
+    .start()
+)
+print("Kafka to MinIO streaming transformation application started")
+time.sleep(10*60)
+dev_query.stop()
+acct_query.stop()
+architect_query.stop()
+print("Kafka to MinIO streaming tranformation application stopped")
+
+
+csv_publisher.py
+
+from kafka import KafkaProducer
+import time
+
+producer = KafkaProducer(
+    bootstrap_servers="localhost:9092",
+    value_serializer=lambda value: value.encode("utf-8")
+)
+
+topic = "csv-input-topic"
+
+messages = [
+    "101,Ravi,25",
+    "102,Kumar,30",
+    "103,Senthil,35",
+    "104,Arun,28",
+    "105,Prakash,32"
+]
+
+for message in messages:
+    producer.send(topic, value=message)
+    print("Sent:", message)
+    time.sleep(1)
+
+producer.flush()
+producer.close()
+
+print("All messages sent successfully!")
+
+$bin/kafka-topics.sh --create --topic csv-input-topic --partitions 4 --bootstrap-server localhost:9092 
+
+$ bin/kafka-console-consumer.sh --topic csv-input-topic --bootstrap-server localhost:9092
+
+kafka_streaming_csv_app.py
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, from_csv
+from pyspark.sql.types import (
+    StructType,
+    StructField,
+    IntegerType,
+    StringType
+)
+
+# ------------------------------------------------
+# 1. Create SparkSession
+# ------------------------------------------------
+
+spark = (
+    SparkSession.builder
+    .appName("KafkaCSVToJSON")
+    .config(
+        "spark.jars.packages",
+        "org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.1"
+    )
+    .getOrCreate()
+
+)
+
+spark.sparkContext.setLogLevel("WARN")
+
+print("Spark Version:", spark.version)
+
+# ------------------------------------------------
+# 2. Define CSV schema
+# ------------------------------------------------
+'''
+csv_schema = StructType([
+    StructField("id", IntegerType(), True),
+    StructField("name", StringType(), True),
+    StructField("age", IntegerType(), True)
+])
+'''
+csv_schema='id INT,name STRING,age INT'
+
+# ------------------------------------------------
+# 3. Read streaming data from Kafka
+# ------------------------------------------------
+
+kafka_df = (
+    spark.readStream
+    .format("kafka")
+    .option("kafka.bootstrap.servers", "localhost:9092")
+    .option("subscribe", "csv-input-topic")
+    .option("startingOffsets", "earliest")
+    .load()
+)
+
+# Kafka value is binary. Convert it into string.
+
+csv_df = kafka_df.select(
+    col("value").cast("string").alias("csv_record")
+)
+
+# ------------------------------------------------
+# 4. Parse CSV messages
+# ------------------------------------------------
+
+parsed_df = csv_df.select(
+    from_csv(
+        col("csv_record"),
+        csv_schema
+    ).alias("record")
+)
+
+# Extract individual columns
+
+result_df = parsed_df.select(
+    col("record.id").alias("id"),
+    col("record.name").alias("name"),
+    col("record.age").alias("age")
+)
+
+# ------------------------------------------------
+# 5. Filter invalid records
+# ------------------------------------------------
+
+valid_df = result_df.filter(
+    col("id").isNotNull() &
+    col("name").isNotNull() &
+    col("age").isNotNull()
+)
+
+
+
+
+query = (
+    valid_df.writeStream
+    .format("console")
+    .outputMode("append")
+    .trigger(processingTime="5 seconds")
+    .start()
+)
+
+print("Kafka CSV streaming application started")
+
+import time
+time.sleep(10*60)
+query.stop()
+print("Kafka CSV Streaming application stopped")
+
+cat /tmp/kafka-logs/mysql-topic-employee-0/00000000000000000000.log 
+
+$ bin/kafka-dump-log.sh --print-data-log --files /tmp/kafka-logs/mysql-topic-employee-0/00000000000000000000.log
+
+Creating a kafka cluster with 3 brokers.
+
+                broker.id          port          log-dir
+broker-1           1                9091         /home/rps/kafka-logs/broker-1      
+broker-2           2                9092         /home/rps/kafka-logs/broker-2
+broker-3           3                9095         /home/rps/kafka-logs/broker-3
+
+steps:
+
+1. stop any zookeeper or kafka server if they are running and clear the /tmp directory.
+
+2. create 3 copies of $KAFKA_HOME/config/server.properties and rename them as server-1.properties, server-2.properties and server-3.properties
+
+3. configure the broker.id, port (listeners) and the log-dir in the config files as per the above table        
+
+4. start the zookeeper
+open a new terminal window and run the following command.
+
+bin/zookeeper-server-start.sh config/zookeeper.properties 
+5. start broker-1,broker-2 and broker-3 using  the following commands
+
+bin/kafka-server-start.sh config/server-1.properties 
+
+bin/kafka-server-start.sh config/server-2.properties 
+
+bin/kafka-server-start.sh config/server-3.properties 
+
+5. create a topic in the cluster with replication factor of 2
+
+$ bin/kafka-topics.sh --create --topic sample-topic --partitions 4 --replication-factor 2 --bootstrap-server localhost:9091,localhost:9092,localhost:9095
+
+$ bin/kafka-topics.sh --describe --topic sample-topic --bootstrap-server localhost:9091,localhost:9092,localhost:9095
+
+
+kafka_multiple_msg_sender.py
+
+from kafka import KafkaProducer
+
+def str_serializer(v):
+    return v.encode("utf-8")
+
+
+producer=KafkaProducer(bootstrap_servers="localhost:9092",
+                       key_serializer=str_serializer,
+                       value_serializer=str_serializer)
+topic="sample-topic"
+for i in range(1,11):
+    key="first-key"
+    message=f"This is test message {i}"
+    producer.send(topic,key=key,value=message)
+    producer.flush()
+
+for i in range(11,21):
+    key="second-key"
+    message=f"This is test message {i}"
+    producer.send(topic,key=key,value=message)
+    producer.flush()
+
+for i in range(21,31):
+    key="third-key"
+    message=f"This is test message {i}"
+    producer.send(topic,key=key,value=message)
+    producer.flush()
+
+for i in range(31,41):
+    key="fourth-key"
+    message=f"This is test message {i}"
+    producer.send(topic,key=key,value=message)
+    producer.flush()
+
+for i in range(41,51):
+    key="fifth-key"
+    message=f"This is test message {i}"
+    producer.send(topic,key=key,value=message)
+    producer.flush()
+print("messages sent")
+producer.close()    
+
+$ bin/kafka-topics.sh --describe --topic sample-topic --bootstrap-server localhost:9091,localhost:9092,localhost:9095
+
+
+$ bin/kafka-dump-log.sh --print-data-log --files /home/rps/kafka-logs/broker-3/sample-topic-0/00000000000000000000.log 
+
+$ bin/kafka-storage.sh random-uuid
+
+
+$ bin/kafka-storage.sh format -t 5m8InxvFRkingDRZdosbhQ -c config/kraft/controller-1.properties
+
+$ bin/kafka-storage.sh format -t rBDltKnYQZCdnFwitJECUg -c config/kraft/broker-1.properties
+
+$ bin/kafka-storage.sh format -t 5m8InxvFRkingDRZdosbhQ -c config/kraft/broker-2.properties
+
+$ bin/kafka-server-start.sh config/kraft/controller-1.properties
+$ bin/kafka-server-start.sh config/kraft/broker-1.properties 
+
+$ bin/kafka-server-start.sh config/kraft/broker-2.properties 
+
+$ bin/kafka-topics.sh --create --topic next-topic --partitions 3 --replication-factor 2 --bootstrap-server localhost:9092
+
+$ bin/kafka-topics.sh --describe --topic next-topic --bootstrap-server localhost:9092
+
+
+
+aggregation_test.py
+
+from pyspark.sql import SparkSession
+spark=SparkSession.builder.appName("simple-app").getOrCreate()
+emp_df=spark.read.option("header",True).csv("/home/rps/training/employee.csv")
+grouped_df=emp_df.groupBy("designation").count()
+grouped_df.show()
+
+
+
+
+
+conda deactivate
