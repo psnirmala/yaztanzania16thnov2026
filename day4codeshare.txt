@@ -1,0 +1,414 @@
+$ sudo /opt/spark/sbin/start-master.sh
+
+$ sudo /opt/spark/bin/spark-class org.apache.spark.deploy.worker.Worker master-url
+
+
+$ mkdir ~/training/gitlab-project
+$ cd ~/training/gitlab-project/
+
+
+greeting.py
+
+def message(name):
+    return "Welcome to gitlab "+name
+    
+app.py
+
+
+import greeting as greet
+print(greet.message("Ajay"))
+    
+
+
+
+glpat-XJIcCaNWkBlVk46YsiH3cGM6MQpvOjEKdTpxanoxcw8.01.170h3ojct
+
+
+$ git init
+$ git config --global user.name "subramanian"
+$ git config --global user.email "subramanian@yahoo.com"
+$ git add greeting.py app.py
+$ git commit -a -m "first commit"
+
+cd ~/training
+
+$ git clone gitlab-remote-url
+$ cd python-git-lab-project/
+$ cp ~/training/gitlab-project/*.py  .
+$ ls
+$ git add app.py greeting.py 
+$ git commit -a -m "first commit"
+$ git push
+
+$ docker --version
+
+app.py
+
+print("Welcome to Docker")
+
+Dockerfile
+
+FROM python:3.12-slim
+WORKDIR /app
+COPY app.py ./
+CMD ["python","app.py"]
+
+docker build -t my-python-app:1.0 .
+
+docker images
+
+docker run my-python-app:1.0
+
+$ docker ps -a
+
+
+
+
+
+/home/rps/training/python-docker-kubernetes-prj/app.py
+
+from flask import Flask
+import socket
+import os
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    hostname = socket.gethostname()
+
+    return {
+        "message": "Hello World!",
+        "application": "Python Kubernetes Application",
+        "hostname": hostname,
+        "pod_name": os.getenv("HOSTNAME"),
+        "status": "Running"
+    }
+
+@app.route("/health")
+def health():
+    return {"status": "healthy"}
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
+    docker run --name python-web-2 -d -p 5001:5000 python-web:1.0
+    
+    
+/home/rps/training/python-docker-kubernetes-prj/requirements.txt
+
+Flask==3.1.2    
+
+/home/rps/training/python-docker-kubernetes-prj/Dockerfile
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY app.py .
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]
+
+
+build the docker image using the following command
+
+$ docker build -t python-web:1.0 .
+$ docker images
+$ docker run -p 5000:5000 python-web:1.0
+
+http://localhost:5000/
+
+from another terminal window, run another instance of docker image by running the following command.
+
+
+
+http://localhost:5001/
+
+list the containers
+docker ps 
+
+docker stop container-id
+docker rm container-id
+
+
+$ minikube status
+
+if not running 
+
+$minikube start
+$minikube status
+
+deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: python-app-deployment
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: python-app
+
+  template:
+    metadata:
+      labels:
+        app: python-app
+
+    spec:
+      containers:
+        - name: python-container
+
+          image: python-web:1.0
+
+          imagePullPolicy: Never
+
+          ports:
+            - containerPort: 5000
+
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+
+            limits:
+              memory: "256Mi"
+              cpu: "500m"
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            
+
+service.yaml
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: python-app-service
+
+spec:
+  type: NodePort
+
+  selector:
+    app: python-app
+
+  ports:
+    - protocol: TCP
+      port: 5000
+      targetPort: 5000
+      nodePort: 30080            
+      
+$ minikube image build -t python-web:1.0 .
+$ minikube image ls
+$ kubectl apply -f deployment.yaml 
+$ kubectl apply -f service.yaml 
+$ kubectl get pods
+$kubectl port-forward service/python-app-service 5005:5000
+
+
+in the browser, open http://localhost:5005
+
+$  kubectl get pods -n argocd
+
+$ kubectl port-forward svc/argocd-server -n argocd 9092:443
+
+open http://localhost:9092
+
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+
+username: admin
+password: password got from the previous setup
+     
+argocd-deployment-nginx
+
+deployment.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: nginx-deployment
+  namespace: demo
+
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: nginx
+
+  template:
+    metadata:
+      labels:
+        app: nginx
+
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:stable
+          ports:
+            - containerPort: 80
+    
+              
+     
+
+service.yaml
+
+apiVersion: v1
+kind: Service
+
+metadata:
+  name: nginx-service
+  namespace: demo
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app: nginx
+
+  ports:
+    - port: 80
+      targetPort: 80
+      
+namespace.yaml
+
+apiVersion: v1
+kind: Namespace
+
+metadata:
+  name: demo       
+  
+  
+$ cd gitlab-argo-prj/
+$ ls
+$ git add deployment.yaml namespace.yaml service.yaml 
+$ git commit -a -m "first commit"
+$ git push 
+
+~/training/gitlab-argo-prj$ mkdir k8s
+~/training/gitlab-argo-prj$ mv *.yaml k8s
+~/training/gitlab-argo-prj$ ls
+README.md  k8s
+~/training/gitlab-argo-prj$ ls k8s
+deployment.yaml  namespace.yaml  service.yaml
+~/training/gitlab-argo-prj$ git add k8s
+~/training/gitlab-argo-prj$ git commit -a -m "second commit"
+~/training/gitlab-argo-prj$ git push
+
+$ kubectl get deployments -n demo
+
+$ kubectl get services -n demo
+
+$ kubectl port-forward svc/nginx-service -n demo 7777:80
+
+open the url http://localhost:7777
+
+iceberg_test_1.py
+
+
+
+from pyspark.sql import SparkSession
+
+# 1. Create Spark Session
+spark = (
+    SparkSession.builder
+    .appName("PySpark-Iceberg-Demo")
+    .config(
+        "spark.sql.extensions",
+        "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions"
+    )
+    .config(
+        "spark.sql.catalog.local",
+        "org.apache.iceberg.spark.SparkCatalog"
+    )
+    .config(
+        "spark.sql.catalog.local.type",
+        "hadoop"
+    )
+    .config(
+        "spark.sql.catalog.local.warehouse",
+        "file:///home/rps/iceberg_warehouse"
+    )
+    .config("spark.jars.packages",
+            "org.apache.iceberg:iceberg-spark-runtime-4.0_2.13:1.10.0")
+    .getOrCreate()
+)
+
+spark.sparkContext.setLogLevel("WARN")
+
+# 2. Create sample student data
+data = [
+    (101, "Arun", "Python", 85),
+    (102, "Bala", "Java", 90),
+    (103, "Kumar", "PySpark", 95),
+    (104, "Ravi", "Python", 80)
+]
+
+columns = ["student_id", "name", "course", "marks"]
+
+df = spark.createDataFrame(data, columns)
+
+print("Original Data:")
+df.show()
+
+# 3. Create Iceberg namespace
+spark.sql("""
+    CREATE NAMESPACE IF NOT EXISTS local.college
+""")
+
+# 4. Create Iceberg table
+df.writeTo("local.college.students").create()
+
+print("Iceberg table created successfully!")
+
+# 5. Read Iceberg table
+print("Reading Iceberg table:")
+spark.read.table("local.college.students").show()
+
+# 6. Insert additional records
+new_data = [
+    (105, "Suresh", "Spark", 88),
+    (106, "Mani", "Python", 92)
+]
+
+new_df = spark.createDataFrame(new_data, columns)
+
+new_df.writeTo("local.college.students").append()
+
+print("After inserting new records:")
+spark.read.table("local.college.students").show()
+
+# 7. Execute SQL query
+print("Students with marks above 90:")
+
+spark.sql("""
+    SELECT student_id, name, course, marks
+    FROM local.college.students
+    WHERE marks > 90
+""").show()
+
+# 8. Display Iceberg table history
+print("Iceberg snapshots:")
+
+spark.sql("""
+    SELECT *
+    FROM local.college.students.snapshots
+""").show(truncate=False)
+
+spark.stop()
+
+$ spark-submit --packages org.apache.iceberg:iceberg-spark-runtime-4.0_2.13:1.10.0 iceberg_test_1.py
