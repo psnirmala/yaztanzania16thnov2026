@@ -1,0 +1,541 @@
+
+ https://cloud.cdp.rpsconsulting.in/
+ 
+ https://github.com/psnirmala/yaztanzania16thnov2026/blob/main/day2codeshare.txt
+
+27SON1502_U## ---- username
+Nov@2026
+
+01-------Jamal
+02-------Nora
+03-------Richard
+04-------Aman
+05-------Aminiel
+06-------David
+07-------Ashraf
+08-------Omari
+09-------Marco
+10-------Novat
+11-------TTuwr
+12-------Malesa
+
+cd /opt/nifi
+bin/nifi.sh status
+
+$ export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64/
+$ export PATH=$JAVA_HOME/bin:$PATH
+$ bin/nifi.sh status
+$ bin/nifi.sh start
+$ bin/nifi.sh status
+
+$ bin/nifi.sh set-single-user-credentials admin 'administrator123'
+
+$ mkdir -p /home/rps/nifi-input-1
+
+File Filter: .*\.csv
+
+filename---------${filename:replace('.csv','.json')}
+
+
+$ rm -rf /tmp/zookeeper/
+$ rm -rf /tmp/kafka-logs/
+
+~/kafka_2.12-3.4.1$ bin/zookeeper-server-start.sh config/zookeeper.properties
+
+~/kafka_2.12-3.4.1$ bin/kafka-server-start.sh config/server.properties 
+
+
+~/kafka_2.12-3.4.1$ bin/kafka-topics.sh --create --topic test-topic --partitions 3 --bootstrap-server localhost:9092
+
+~/kafka_2.12-3.4.1$ mkdir -p /home/rps/csv-input-2
+
+bin/kafka-console-consumer.sh --topic test-topic --bootstrap-server localhost:9092 --from-beginning
+
+
+conda create -n airflow-training-env python=3.12 -y
+
+
+conda activate airflow-training-env
+python --version
+export AIRFLOW_VERSION=3.4.0
+export PYTHON_VERSION=3.12
+
+export CONSTRAINT_URL="https://raw.githubusercontent.com/apache/airflow/constraints-${AIRFLOW_VERSION}/constraints-${PYTHON_VERSION}.txt"
+
+pip install "apache-airflow==${AIRFLOW_VERSION}" \
+--constraint "${CONSTRAINT_URL}"
+
+$ airflow version
+
+$ mkdir -p ~/airflow-training
+
+$ export AIRFLOW_HOME=/home/rps/airflow-training
+
+$ export AIRFLOW__CORE__LOAD_EXAMPLES=False
+
+$ mkdir -p $AIRFLOW_HOME/dags
+
+$ export AIRFLOW__API__PORT=8085
+
+$ airflow standalone
+
+dags/hello_world.py
+
+from datetime import datetime
+
+from airflow.sdk import dag, task
+
+
+@dag(
+    dag_id="hello_world",
+    schedule="*/1* * * *",
+    start_date=datetime(2026, 1, 1),
+    catchup=False,
+    tags=["hello-world"]
+)
+def hello_world():
+
+    @task
+    def say_hello():
+        print("Hello World!")
+        print("Welcome to Apache Airflow")
+
+    @task
+    def say_goodbye():
+        print("Airflow execution completed!")
+
+    hello = say_hello()
+
+    goodbye = say_goodbye()
+
+    hello >> goodbye
+
+
+hello_world()
+
+
+~/airflow-training$ cat simple_auth_manager_passwords.json.generated 
+
+from datetime import datetime
+
+from airflow.sdk import dag, task
+
+
+@dag(
+    dag_id="hello_world",
+    schedule="*/1 * * * *",
+    start_date=datetime(2026, 1, 1),
+    catchup=False,
+    tags=["hello-world"]
+)
+def hello_world():
+
+    @task
+    def say_hello():
+        print("Hello World!")
+        print("Welcome to Apache Airflow")
+
+    @task
+    def intermediate():
+        print("within intermediate function")
+
+    @task
+    def say_goodbye():
+        print("Airflow execution completed!")
+
+    hello = say_hello()
+
+    goodbye = say_goodbye()
+
+    intermediate=intermediate()
+    hello >> intermediate >> goodbye
+
+
+hello_world()
+
+
+from datetime import datetime
+
+from airflow.sdk import dag, task
+
+
+@dag(
+    dag_id="conditional_pipeline",
+    schedule=None,
+    start_date=datetime(2026, 1, 1),
+    catchup=False,
+    tags=["condition","branch"]
+)
+def conditional_pipeline():
+
+    @task
+    def validate_data():
+        print("validating data")
+        return True
+
+
+    @task
+    def process():
+        print("processing the data")
+
+    @task
+    def print_error():
+        print("not a valid data")   
+    
+    @task
+    def completion():
+        print("application completed")
+
+    validate = validate_data()
+
+    process=process()
+    print_error=print_error()
+    completion=completion()
+
+    validate >> [process, print_error]
+    [process,print_error] >> completion
+   
+
+
+conditional_pipeline()
+
+
+
+from datetime import datetime
+
+from airflow.sdk import dag, task
+
+
+@dag(
+    dag_id="conditional_employee_pipeline",
+    description="Conditional task execution example",
+    schedule=None,
+    start_date=datetime(2026, 1, 1),
+    catchup=False,
+    tags=["conditional", "branching"]
+)
+def conditional_employee_pipeline():
+
+    @task
+    def validate_data():
+        print("Validating employee data")
+
+        # Change this value to False to test failure
+        return True
+
+    @task.branch
+    def check_validation(is_valid):
+
+        if is_valid:
+            return "process_data"
+
+        return "send_error"
+
+    @task
+    def process_data():
+        print("Data is valid")
+        print("Starting Spark processing")
+
+    @task
+    def send_error():
+        print("Invalid data detected!")
+        print("Sending error notification")
+
+    @task(trigger_rule="none_failed_min_one_success")
+    def finish():
+        print("Pipeline completed")
+
+    validation = validate_data()
+
+    branch = check_validation(validation)
+
+    success = process_data()
+
+    failure = send_error()
+
+    ending = finish()
+
+    validation >> branch
+
+    branch >> [success, failure]
+
+    [success, failure] >> ending
+
+
+conditional_employee_pipeline()
+
+
+Airflow is already running in terminal 1
+
+In a new terminal , run the following commands.---------terminal 2
+
+
+
+~/airflow-training/dags$ conda activate airflow-training-env
+~/airflow-training/dags$ pip install kafka-python
+
+In a new terminal , start the zookeeper-----------------terminal 3
+
+$ cd ~/kafka_2.12-3.4.1/
+~/kafka_2.12-3.4.1$ bin/zookeeper-server-start.sh config/zookeeper.properties 
+
+In a new terminal, start kafka server------------------terminal 4
+
+~/kafka_2.12-3.4.1$ cd ~/kafka_2.12-3.4.1/
+~/kafka_2.12-3.4.1$ bin/kafka-server-start.sh config/server.properties 
+
+goto terminal 2 and run the following commands
+
+~/kafka_2.12-3.4.1$ cd ~/kafka_2.12-3.4.1/
+
+~/kafka_2.12-3.4.1$ bin/kafka-topics.sh --create --topic employe-topic --partitions 3 --bootstrap-server localhost:9092
+
+mkdir -p ~/airflow-kafka-spark-prj/{producer,spark,dags,output}
+
+nano ~/airflow-kafka-spark-prj/producer/employee_producer.py
+
+from kafka import KafkaProducer
+import json
+import random
+import time
+
+KAFKA_SERVER = "localhost:9092"
+TOPIC = "employee-topic"
+
+producer = KafkaProducer(
+    bootstrap_servers=KAFKA_SERVER,
+    value_serializer=lambda x: json.dumps(x).encode("utf-8"),
+    acks="all"
+)
+
+departments = [
+    "IT",
+    "HR",
+    "FINANCE",
+    "SALES",
+    "MARKETING"
+]
+
+print("Starting Kafka Producer...")
+
+for i in range(1, 101):
+
+    employee = {
+        "employee_id": i,
+        "employee_name": f"Employee_{i}",
+        "department": random.choice(departments),
+        "salary": random.randint(20000, 100000)
+    }
+
+    producer.send(TOPIC, value=employee)
+
+    print("Produced:", employee)
+
+    time.sleep(0.05)
+
+producer.flush()
+producer.close()
+
+print("100 employee records successfully sent to Kafka!")
+
+
+$  python ~/airflow-kafka-spark-prj/producer/employee_producer.py
+
+
+$ nano ~/airflow-kafka-spark-prj/spark/employee_spark.py
+
+from pyspark.sql import SparkSession
+from pyspark.sql.functions import col, from_json
+
+KAFKA_SERVER = "localhost:9092"
+TOPIC = "employee-topic"
+
+OUTPUT_PATH = "/home/rps/airflow-kafka-spark-prj/output/employees"
+
+# Create Spark Session
+spark = (
+    SparkSession.builder
+    .appName("Airflow-Kafka-PySpark-ETL")
+    .master("local[*]")
+    .getOrCreate()
+)
+
+spark.sparkContext.setLogLevel("WARN")
+
+print("Starting PySpark Kafka ETL...")
+
+# Define schema
+schema = "employee_id INT,employee_name STRING,department STRING,salary INT"
+
+# Read Kafka messages
+kafka_df = (
+    spark.read
+    .format("kafka")
+    .option("kafka.bootstrap.servers", KAFKA_SERVER)
+    .option("subscribe", TOPIC)
+    .option("startingOffsets", "earliest")
+    .option("endingOffsets", "latest")
+    .load()
+)
+
+print("Kafka data received")
+
+# Convert Kafka JSON messages into columns
+employee_df = (
+    kafka_df
+    .select(
+        from_json(
+            col("value").cast("string"),
+            schema
+        ).alias("employee")
+    )
+    .select("employee.*")
+)
+
+print("Original Employee Data")
+
+employee_df.show(10, truncate=False)
+
+# Transformation 1: Filter employees with salary > 50000
+filtered_df = employee_df.filter(
+    col("salary") > 50000
+)
+
+# Transformation 2: Calculate salary category
+from pyspark.sql.functions import when
+
+transformed_df = filtered_df.withColumn(
+    "salary_category",
+    when(col("salary") >= 80000, "HIGH")
+    .otherwise("MEDIUM")
+)
+
+# Transformation 3: Department-wise aggregation
+department_df = (
+    transformed_df
+    .groupBy("department")
+    .count()
+    .withColumnRenamed("count", "employee_count")
+)
+
+print("Transformed Employee Data")
+
+transformed_df.show(truncate=False)
+
+print("Department-wise Employee Count")
+
+department_df.show()
+
+# Write employee data
+(
+    transformed_df
+    .write
+    .mode("overwrite")
+    .csv(OUTPUT_PATH)
+)
+
+# Write department summary
+(
+    department_df
+    .write
+    .mode("overwrite")
+    .csv(OUTPUT_PATH + "_summary")
+)
+
+print("PySpark ETL completed successfully!")
+
+spark.stop()
+
+$ /opt/spark/bin/spark-submit --packages org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.1 ~/airflow-kafka-spark-prj/spark/employee_spark.py 
+
+
+nano ~/airflow-kafka-spark-prj/dags/employee_etl_dag.py 
+
+from datetime import datetime
+from pathlib import Path
+import os
+import subprocess
+import sys
+
+from airflow.sdk import dag, task
+
+
+PROJECT_HOME = Path.home() / "airflow-kafka-spark-prj"
+
+PRODUCER_FILE = PROJECT_HOME / "producer" / "employee_producer.py"
+
+SPARK_FILE = PROJECT_HOME / "spark" / "employee_spark.py"
+
+SPARK_SUBMIT = "/opt/spark/bin/spark-submit"
+
+KAFKA_CONNECTOR = (
+    "org.apache.spark:spark-sql-kafka-0-10_2.13:4.0.1"
+)
+
+
+@dag(
+    dag_id="employee_kafka_spark_etl",
+    description="Kafka and PySpark ETL orchestrated by Airflow",
+    schedule=None,
+    start_date=datetime(2026, 1, 1),
+    catchup=False,
+    tags=["kafka", "spark", "etl"]
+)
+def employee_kafka_spark_etl():
+
+    @task
+    def produce_employee_data():
+
+        print("Starting Kafka Producer")
+
+        subprocess.run(
+            [sys.executable, str(PRODUCER_FILE)],
+            check=True
+        )
+
+        print("Kafka Producer Completed")
+
+    @task
+    def run_spark_etl():
+
+        print("Starting PySpark ETL")
+
+        env = os.environ.copy()
+
+        env["SPARK_HOME"] = "/opt/spark"
+        env["PYSPARK_PYTHON"] = sys.executable
+
+        command = [
+            SPARK_SUBMIT,
+            "--master", "local[*]",
+            "--packages", KAFKA_CONNECTOR,
+            str(SPARK_FILE)
+        ]
+
+        subprocess.run(
+            command,
+            check=True,
+            env=env
+        )
+
+        print("PySpark ETL Completed")
+
+    # Define execution dependencies
+
+    producer = produce_employee_data()
+
+    spark = run_spark_etl()
+
+    producer >> spark
+
+
+employee_kafka_spark_etl()
+
+Go to terminal 1
+
+press ctrl+c to terminate the existing airflow server
+
+run the following commands to start the airflow server with a new AIRFLOW_HOME
+
+~/airflowtest$ export AIRFLOW_HOME=/home/rps/airflow-kafka-spark-prj/
+~/airflowtest$ airflow standalone
